@@ -1,0 +1,38 @@
+#!/bin/bash
+source ~/bin/helper_functions
+
+function main() {
+	base_dir="./experiments"
+	if [ "$1" == "" ]; then
+		trgt_dir="/default"
+	else
+		trgt_dir="$1"
+	fi
+
+	full_dir=${base_dir}/${trgt_dir}
+	create_dir "${full_dir}"
+
+	language-modeling-with-boxes train \
+		--batch_size=4096 --box_type=BoxTensor \
+		--data_device=gpu \
+		--dataset=ptb \
+		--embedding_dim=64 \
+		--eval_file=./data/similarity_datasets/ \
+		--int_temp=1.9678289474987882 \
+		--log_frequency=10 \
+		--loss_fn=max_margin \
+		--lr=0.004204091643267762 \
+		--margin=5 \
+		--model_type=Word2BoxConjunction \
+		--n_gram=5 \
+		--negative_samples=2 \
+		--num_epochs=100 \
+		--subsample_thresh=0.001 \
+		--vol_temp=0.33243242379830407 \
+		--save_model \
+		--add_pad \
+		--save_dir=${full_dir} \
+		--subsample_thresh=.001
+}
+
+main $@
