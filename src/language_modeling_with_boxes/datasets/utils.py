@@ -125,7 +125,7 @@ def get_iter_on_device(
     ## Create Vocabulary properties
     print("Creating iterable dataset ...")
     TEXT = torchtext.data.Field()
-    pdb.set_trace()
+    #pdb.set_trace()
     TEXT.stoi = vocab_stoi
     TEXT.freqs = vocab_freq
     TEXT.itos = [k for k, v in sorted(vocab_stoi.items(), key=lambda item: item[1])]
