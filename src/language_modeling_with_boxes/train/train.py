@@ -5,6 +5,7 @@ from .Trainer import Trainer, TrainerWordSimilarity
 
 from ..models import Word2Box, Word2Vec, Word2VecPooled, Word2BoxConjunction, Word2Gauss
 from ..datasets.utils import get_iter_on_device
+import pdb
 
 global use_cuda
 use_cuda = torch.cuda.is_available()
@@ -96,6 +97,7 @@ def training(config):
             margin=config["margin"],
             similarity_datasets_dir=config["eval_file"],
             subsampling_prob=None,  # pass: subsampling_prob, when you want to adjust neg_sampling distn
+            subsample_thresh=config["subsample_thresh"],
         )
     elif (
         config["model_type"] == "Word2BoxPooled"
@@ -116,6 +118,7 @@ def training(config):
             margin=config["margin"],
             similarity_datasets_dir=config["eval_file"],
             subsampling_prob=None,  # pass: subsampling_prob, when you want to adjust neg_sampling distn
+            subsample_thresh=config["subsample_thresh"]
         )
 
     trainer.train_model(
