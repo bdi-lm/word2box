@@ -5,6 +5,7 @@ from scipy.stats import loguniform
 import pdb
 from math import exp
 import subprocess
+import pdb
 
 def gen_args(params):
 	args = [
@@ -13,7 +14,7 @@ def gen_args(params):
 		f'--box_type=BoxTensor',
 		f'--data_device=gpu',
 		#f'--dataset=wackypedia_lemma',
-		f'--dataset=ptb',
+		f'--dataset=wikitext-103',
 		f'--embedding_dim=64',
 		f'--eval_file=./data/similarity_datasets/',
 		f'--int_temp=1.9678289474987882',

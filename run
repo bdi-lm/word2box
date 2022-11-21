@@ -2,20 +2,22 @@
 source ~/bin/helper_functions
 
 function main() {
+
 	base_dir="./experiments"
 	if [ "$1" == "" ]; then
-		trgt_dir="/default"
+		trgt_dir="default"
 	else
 		trgt_dir="$1"
 	fi
-
+	
+	trgt_dir=$(now)
 	full_dir=${base_dir}/${trgt_dir}
 	create_dir "${full_dir}"
 
 	language-modeling-with-boxes train \
 		--batch_size=4096 --box_type=BoxTensor \
-		--data_device=gpu \
-		--dataset=ptb \
+		--data_device=cpu \
+		--dataset=wackypedia_lemma \
 		--embedding_dim=64 \
 		--eval_file=./data/similarity_datasets/ \
 		--int_temp=1.9678289474987882 \
@@ -26,7 +28,7 @@ function main() {
 		--model_type=Word2BoxConjunction \
 		--n_gram=5 \
 		--negative_samples=2 \
-		--num_epochs=100 \
+		--num_epochs=10 \
 		--subsample_thresh=0.001 \
 		--vol_temp=0.33243242379830407 \
 		--save_model \
