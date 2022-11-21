@@ -16,6 +16,8 @@ from .loss import nll, nce, max_margin
 from .negative_sampling import RandomNegativeCBOW, RandomNegativeSkipGram
 import pdb
 from torch.utils.tensorboard import SummaryWriter
+import re
+import nltk
 
 
 global use_cuda
@@ -194,6 +196,7 @@ class TrainerWordSimilarity(Trainer):
 				if torch.isnan(loss).any():
 					raise RuntimeError("Loss value is nan :(")
 
+				loss=loss.to('cpu')
 				# Back-propagation
 				total_loss.backward()
 				optimizer.step()
@@ -291,6 +294,7 @@ class TrainerWordSimilarity(Trainer):
 			return 0
 
 		metrics = {}
+		fj_metrics = {}
 		correlation = 0.0
 
 		# similarity_file is expected to be in the format word1\tword2\tscore
@@ -341,8 +345,45 @@ class TrainerWordSimilarity(Trainer):
 					fj_correlation = spearmanr(predicted_fj_scores, real_scores)[0]
 
 					metrics[file.title()] = correlation
-					metrics['fuzzy jaccard'] = fj_correlation
+					fj_metrics[f'{file.title()}'] = fj_correlation
+		model.vec_embeddings()
+		
+		metrics['sts']=self.sts_benchmark(model)
 
 		pprint.pprint(metrics, width=1)
 
 		return metrics
+	
+	def sts_benchmark(self, model):
+		fname='/data/john/projects/word2box/data/sts-benchmark/sts-test.csv'
+		labels=[]
+		s1_collection=[]
+		s2_collection=[]
+		f= open(fname, 'r')
+		for line in f:
+			split=re.split(r'\t+', line)
+			labels.append(float(split[4]))
+			s1_collection.append(re.sub('[\.\n]', '', split[5].lower()))
+			s2_collection.append(re.sub('[\.\n]', '', split[6].lower()))
+		f.close()
+		labels=np.array(labels)
+
+		N=len(labels)
+
+		scores=[]
+		for i in range(N):
+			s1=[]
+			s2=[]
+			for word in s1_collection[i]:
+				if word in self.vocab.stoi:
+					s1.append(self.vocab.stoi[word])
+			for word in s2_collection[i]:
+				if word in self.vocab.stoi:
+					s2.append(self.vocab.stoi[word]) 
+			b1=model.sentence_embeddings(s1)
+			b2=model.sentence_embeddings(s2)
+			scores.append(model.embedding_similarity(b1, b2).cpu().numpy())
+		scores=np.array(scores)
+		correlation=spearmanr(scores, labels)[0]
+		return correlation
+
