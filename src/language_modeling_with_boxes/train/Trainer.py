@@ -349,12 +349,13 @@ class TrainerWordSimilarity(Trainer):
 		model.vec_embeddings()
 		
 		metrics['sts']=self.sts_benchmark(model)
+		metrics['sts_fj']=self.sts_benchmark(model, jaccard=True)
 
 		pprint.pprint(metrics, width=1)
 
 		return metrics
 	
-	def sts_benchmark(self, model):
+	def sts_benchmark(self, model, jaccard=False):
 		fname='/data/john/projects/word2box/data/sts-benchmark/sts-test.csv'
 		labels=[]
 		s1_collection=[]
@@ -382,7 +383,10 @@ class TrainerWordSimilarity(Trainer):
 					s2.append(self.vocab.stoi[word]) 
 			b1=model.sentence_embeddings(s1)
 			b2=model.sentence_embeddings(s2)
-			scores.append(model.embedding_similarity(b1, b2).cpu().numpy())
+			if jaccard:
+				scores.append(self.fuzzy_jaccard(b1, b2))
+			else:
+				scores.append(model.embedding_similarity(b1, b2).cpu().numpy())
 		scores=np.array(scores)
 		correlation=spearmanr(scores, labels)[0]
 		return correlation
