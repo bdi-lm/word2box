@@ -1,0 +1,203 @@
+#!/usr/bin/env python
+
+import re
+import numpy as np
+from tensorboard.backend.event_processing import event_accumulator
+import matplotlib.pyplot as plt
+import argparse
+import sys
+from pathlib import Path
+
+import pdb
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument(
+		'--logdir',
+		type=str,
+		default='./runs',
+		help='this is the directory where the logs are stored'
+	)
+	parser.add_argument(
+		'--figdir',
+		type=str,
+		default='./figs',
+		help='this is the directory where the figures will be saved'
+	)
+	parser.add_argument(
+		'--name',
+		type=str,
+		default='default',
+		help='this is the name of the folder that contains all your tensorboard data'
+	)
+
+	args=parser.parse_args()
+	logdir = args.logdir
+	figdir = args.figdir
+	tb_name = args.name
+	#name='Nov22_15-48-48_nlp'
+
+	#read in data
+	ea = event_accumulator.EventAccumulator(
+		f'{logdir}/{tb_name}', 
+		size_guidance = {
+			event_accumulator.COMPRESSED_HISTOGRAMS: 0,
+			event_accumulator.IMAGES: 0,
+			event_accumulator.AUDIO: 0,
+			event_accumulator.SCALARS: 0,
+			event_accumulator.HISTOGRAMS: 0,
+		}
+	)
+	ea.Reload()
+
+	# use this to get the keys
+	# ea.scalars.Keys()
+
+	#make dictionaries for grouping tag names and setting plot titles
+	tag_groups = {
+		'Loss' : 					['Loss'],
+		'En-Yp-130' :				['metric/En-Yp-130.Txt'],
+		'En-Mturk-287' :			['metric/En-Mturk-287.Txt'],
+		'En-Ws-353-All' :			['metric/En-Ws-353-All.Txt'],
+		'En-Simlex-999' :			['metric/En-Simlex-999.Txt'],
+		'En-Ws-353-Rel' :			['metric/En-Ws-353-Rel.Txt'],
+		'En-Rg-65' :				['metric/En-Rg-65.Txt'],
+		'En-Mc-30' :				['metric/En-Mc-30.Txt'],
+		'En-Simverb-3500' :			['metric/En-Simverb-3500.Txt'],
+		'En-Mturk-771' :			['metric/En-Mturk-771.Txt'],
+		'En-Rw-Stanford' :			['metric/En-Rw-Stanford.Txt'],
+		'En-Ws-353-Sim' :			['metric/En-Ws-353-Sim.Txt'],
+		'En-Men-Tr-3K' :			['metric/En-Men-Tr-3K.Txt'],
+		'En-Verb-143' :				['metric/En-Verb-143.Txt'],
+		'STS-Gumbel' :				['metric/sts'],
+		'STS-FuzzyJaccard' :		['metric/sts_fj'],
+		#'Average Base Reward' :		['reward_base/train_avg', 'reward_base/val_avg'],
+		#'Average Budget Used' :		['reward_budget/train_avg', 'reward_budget/val_avg'],
+		#'Average Final Reward' :	['reward_final/train_avg', 'reward_final/val_avg'],
+		#'Average Unscaled Reward' :	['reward_unscaled/train_avg', 'reward_unscaled/val_avg'],
+		#'Average Rouge-1' :			['rouge1/f-measure', 'rouge1/precision', 'rouge1/recall'],
+		#'Average Rouge-2' :			['rouge2/f-measure', 'rouge2/precision', 'rouge2/recall'],
+		#'Average Rouge-L' :			['rougeL/f-measure', 'rougeL/precision', 'rougeL/recall'],
+	}
+
+	legend_locations = {
+		'Loss' : 'lower right',
+		'Average Base Reward' : 'lower right',
+		'Average Budget Used' : 'upper right',
+		'Average Final Reward' : 'lower right',
+		'Average Unscaled Reward' : 'lower right',
+		'Average Rouge-1' : 'lower right',
+		'Average Rouge-2' : 'lower right',
+		'Average Rouge-L' : 'lower right',
+	}
+
+	tag_aliases = {
+		'loss/train' :  'training',
+		'loss/val' : 'validation',
+		'reward_base/train_avg' : 'training',
+		'reward_base/val_avg' : 'validation',
+		'reward_budget/train_avg' : 'training',
+		'reward_budget/val_avg' : 'validation',
+		'reward_final/train_avg' : 'training',
+		'reward_final/val_avg' : 'validation',
+		'reward_unscaled/train_avg' : 'training', 
+		'reward_unscaled/val_avg' : 'validation',
+		'rouge1/f-measure' : 'f-measure',
+		'rouge1/precision' : 'precision',
+		'rouge1/recall' : 'recall',
+		'rouge2/f-measure' : 'f-measure',
+		'rouge2/precision' : 'precision',
+		'rouge2/recall' : 'recall',
+		'rougeL/f-measure' : 'f-measure',
+		'rougeL/precision' : 'precision',
+		'rougeL/recall' : 'recall',
+	}
+
+	print()
+	#plot data
+	styles = ['r-', 'b--', 'g-.']
+	markers = ['', '.', '.']
+
+	w=8
+	h=6
+	font_size=20
+	legend_font_size=16
+	plt.rc('font', size=font_size)
+	plt.rc('legend', fontsize=legend_font_size)
+	plt.rc('axes', titlesize=font_size+4)
+	plt.rc('axes', labelsize=font_size+4)
+	plt.rc('xtick', labelsize=font_size-2)
+	plt.rc('ytick', labelsize=font_size-2)
+
+	#xticks=(0, 500, 1000, 1500, 2000, 2500, 3000)
+	#xtick_labels=('0', '.5K', '1K', '1.5K', '2K', '2.5K', '3K')
+
+	
+	table_vals={}
+	for name in tag_groups:
+
+		fig, ax = plt.subplots(figsize=(w,h))
+		ax.grid()
+
+		group = tag_groups[name]
+		alphas = [.5, .8, .5]
+
+		for i, tag in enumerate(group):
+			data=ea.Scalars(tag)
+
+			# save the last value for the table
+			table_vals[re.sub(r'metric\/','', tag)]=f'{data[-1].value:.2f}'
+			
+			#label = tag_aliases[tag]
+			x=np.array([point.step	for point in data])
+			y=np.array([point.value	for point in data])
+
+			ax.plot(
+				x, 
+				y, 
+				styles[i], 
+				alpha=alphas[i], 
+				marker=markers[i],
+				#label=label,
+			)
+
+
+		#legend = ax.legend(loc=legend_locations[name], shadow=True)
+		#legend.get_frame().set_facecolor('C0')
+
+		#plt.xticks(xticks, xtick_labels)
+		plt.xlabel('Step Number')
+		plt.title(name)
+
+		#ax.set_title(name, fontsize=font_size)
+
+		Path(f'{figdir}/{tb_name}').mkdir(parents=True, exist_ok=True)
+		target = f'{figdir}/{tb_name}/{name}.png'
+		#plt.savefig(target, bbox_inches= 'tight')
+		plt.subplots_adjust(left=.15, right=.9, bottom=.15, top=.9)
+		plt.savefig(target)
+		print(f'plot saved to \"{target}\"')
+
+	#create table of all the values
+	fig, ax = plt.subplots(1, 1)
+	fig.set_size_inches(30, 2)
+	plt.rcParams['figure.autolayout'] = True
+
+	#hide axes
+	fig.patch.set_visible(False)
+	ax.axis('off')
+	ax.axis('tight')
+
+	columns = list(table_vals.keys())
+	row= list(table_vals.values())
+	table=ax.table(
+		cellText=[row],
+		colLabels=columns,
+		loc='center'
+	)
+	table.auto_set_font_size(False)
+	table.set_fontsize(10)
+	target = f'{figdir}/{tb_name}/data_table.png'
+	plt.savefig(target)
+	print(f'table saved to \"{target}\"')
+	print()
